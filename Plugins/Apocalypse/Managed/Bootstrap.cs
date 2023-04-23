@@ -15,8 +15,5 @@ public class Bootstrap
     public static void Startup()
     {
         Console.WriteLine("Apocalypse Startup!!!");
-
-        Type t = typeof(EType);
-        t.ise
     }
 }
