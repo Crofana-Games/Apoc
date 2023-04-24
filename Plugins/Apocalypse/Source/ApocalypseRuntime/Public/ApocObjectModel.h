@@ -5,6 +5,29 @@
 namespace Apocalypse
 {
 
+	template <typename T>
+	constexpr bool bPrimitive = false;
+
+#define PRIMITIVE_TYPE(Type) template <> constexpr bool bPrimitive<Type> = true;
+	PRIMITIVE_TYPE(uint8)
+	PRIMITIVE_TYPE(uint16)
+	PRIMITIVE_TYPE(uint32)
+	PRIMITIVE_TYPE(uint64)
+	PRIMITIVE_TYPE(int8)
+	PRIMITIVE_TYPE(int16)
+	PRIMITIVE_TYPE(int32)
+	PRIMITIVE_TYPE(int64)
+	PRIMITIVE_TYPE(float)
+	PRIMITIVE_TYPE(double)
+	PRIMITIVE_TYPE(bool)
+	PRIMITIVE_TYPE(int64)
+	PRIMITIVE_TYPE(uint8)
+	PRIMITIVE_TYPE(int16)
+	PRIMITIVE_TYPE(int32)
+	PRIMITIVE_TYPE(int64)
+	PRIMITIVE_TYPE(uint8)
+#undef PRIMITIVE_TYPE
+
 	struct FRegistry
 	{
 		TMap<FName, TSharedPtr<struct IType>> TypeMap;
@@ -23,6 +46,8 @@ namespace Apocalypse
 	struct IType : ITypeInfo
 	{
 		virtual bool IsClass() const = 0;
+		virtual bool IsValueSemantics() const = 0; // 决定Buffer中非基元类型的解析策略，值语义解包时默认拷贝一个新对象，除非Property显式指定传引用；对象语义解包时不会发生拷贝。
+		
 		bool IsEnum() const { return !IsClass(); }
 		TSharedPtr<struct IClass> AsClass();
 		TSharedPtr<struct IEnum> AsEnum();
@@ -31,6 +56,7 @@ namespace Apocalypse
 	struct IClass : IType
 	{
 		virtual bool IsClass() const override final { return true; }
+		virtual bool IsPrimitive() const = 0;
 		virtual TSharedPtr<struct IFunction> GetFunction(FName InName) const = 0;
 		virtual void GetFunctionMap(TMap<FName, TSharedPtr<struct IFunction>>& OutFunctionMap) const = 0;
 	};
@@ -38,6 +64,7 @@ namespace Apocalypse
 	struct IEnum : IType
 	{
 		virtual bool IsClass() const override final { return false; }
+		virtual bool IsValueSemantics() const override { return true; }
 	};
 
 	struct IMember : ITypeInfo
@@ -48,6 +75,12 @@ namespace Apocalypse
 	struct IFunction : IMember
 	{
 		virtual int32 GetBufferSize() const = 0;
+		/**
+		 * Buffer中包含了函数调用所需的上下文信息，函数会根据自己的参数信息将Buffer分成多个Chunk，每个Chunk根据参数类型不同有不同的解析策略：
+		 * 1. 基元类型：参数的值直接存在Buffer中，会直接解析出来。
+		 * 2. 值类型：Buffer中存的是一个固定大小的（8-byte）内存地址，解析时会去对应地址找到原型，并且拷贝一个新对象。
+		 * 3. 引用类型：Buffer中存的是一个固定大小的（8-byte）内存地址，解析时会去对应地址找到对象，并且直接操作该对象。
+		 */
 		virtual bool operator()(void* Buffer) const = 0;
 	};
 
@@ -68,12 +101,14 @@ namespace Apocalypse
 
 
 	// Classes
-	template <bool bUnrealField, typename CompiledInType>
+	template <typename CompiledInType, bool bUnrealField, bool bValueSemantics>
 	class TCompiledInClass : public IClass
 	{
 
-		static constexpr bool bDefaultConstructible = TIsConstructible<CompiledInType>::Value;
-		static constexpr bool bDestructible = std::is_destructible_v<CompiledInType>;
+		static_assert(bValueSemantics || !(bUnrealField && !TPointerIsConvertibleFromTo<CompiledInType, const volatile UObject>::Value), "Unreal script structs must be value semantics!");
+
+	public:
+		static constexpr bool bDestructible = std::is_destructible_v<CompiledInType> && !TIsTriviallyDestructible<CompiledInType>::Value;
 		
 	public:
 		TCompiledInClass(FName InName)
@@ -83,6 +118,8 @@ namespace Apocalypse
 		}
 
 		virtual FName GetName() override { return Name; }
+		virtual bool IsValueSemantics() const override { return bValueSemantics; }
+		virtual bool IsPrimitive() const override { return false; }
 		virtual TSharedPtr<IFunction> GetFunction(FName InName) const override
 		{
 			const TSharedPtr<IFunction>* Function = FunctionMap.Find(InName);
@@ -108,12 +145,29 @@ namespace Apocalypse
 		
 	};
 
+	// template <typename CompiledInType>
+	// class TPrimitiveClass : public TCompiledInClass<false, CompiledInType>
+	// {
+	// public:
+	// 	static constexpr bool bPrimitive = false;
+	// 	static constexpr bool bDestructible = false;
+	//
+	// public:
+	// 	TPrimitiveClass(FName InName)
+	// 		: TCompiledInClass(InName)
+	// 	{
+	//
+	// 	}
+	//
+	// 	virtual bool IsPrimitive() const override { return bPrimitive; } // Note: bPrimitive is static so even it looks like the same we must override.
+	// };
 
 
-	class FDynamicClass : public IClass
-	{
-		
-	};
+
+	// class FDynamicClass : public IClass
+	// {
+	// 	virtual bool IsPrimitive() const override { return false; }
+	// };
 
 
 
@@ -291,12 +345,14 @@ namespace Apocalypse
 	
 
 	// Auto registration
-	template <bool bUnrealField, typename CompiledInType, typename DerivedType>
+	template <typename CompiledInType, bool bUnrealField, bool bValueSemantics, typename DerivedType>
 	struct TAutoCompiledInClass
 	{
+		using CompiledInClassType = TCompiledInClass<CompiledInType, bUnrealField, bValueSemantics>;
+		
 		TAutoCompiledInClass()
 		{
-			auto Class = MakeShared<TCompiledInClass<bUnrealField, CompiledInType>>(GetClassName());
+			auto Class = MakeShared<CompiledInClassType>(GetClassName());
 			SetupClass(Class);
 			GetTypedThis()->SetupClass(Class);
 			GetRegistry().TypeMap.Emplace(GetClassName(), Class);
@@ -308,7 +364,7 @@ namespace Apocalypse
 		}
 
 	private:
-		void SetupClass(TSharedPtr<TCompiledInClass<bUnrealField, CompiledInType>> Class)
+		void SetupClass(TSharedPtr<CompiledInClassType> Class)
 		{
 			Class->ConditionalRegisterDefaultConstructor();
 			Class->ConditionalRegisterDestructor();
@@ -322,39 +378,41 @@ namespace Apocalypse
 }
 
 
-template <bool bUnrealField, typename CompiledInType>
+template <typename CompiledInType, bool bUnrealField, bool bValueSemantics>
 template <typename ReturnType, typename... ArgTypes>
-void Apocalypse::TCompiledInClass<bUnrealField, CompiledInType>::RegisterStaticFunction(FName InFunctionName, ReturnType(*InFunction)(ArgTypes...))
+void Apocalypse::TCompiledInClass<CompiledInType, bUnrealField, bValueSemantics>::RegisterStaticFunction(FName InFunctionName, ReturnType(*InFunction)(ArgTypes...))
 {
 	FunctionMap.Emplace(InFunctionName, MakeShared<TStaticFunction<ReturnType, ArgTypes...>>(InFunctionName, StaticCastSharedRef<IClass>(AsShared()), InFunction));
 }
 
-template <bool bUnrealField, typename CompiledInType>
+template <typename CompiledInType, bool bUnrealField, bool bValueSemantics>
 template <typename ReturnType, typename ThisType, typename ... ArgTypes>
-void Apocalypse::TCompiledInClass<bUnrealField, CompiledInType>::RegisterMemberFunction(FName InFunctionName, ReturnType(ThisType::* InFunction)(ArgTypes...))
+void Apocalypse::TCompiledInClass<CompiledInType, bUnrealField, bValueSemantics>::RegisterMemberFunction(FName InFunctionName, ReturnType(ThisType::* InFunction)(ArgTypes...))
 {
 	FunctionMap.Emplace(InFunctionName, MakeShared<TMemberFunction<ReturnType, ThisType, ArgTypes...>>(InFunctionName, StaticCastSharedRef<IClass>(AsShared()), InFunction));
 }
 
-template <bool bUnrealField, typename CompiledInType>
-void Apocalypse::TCompiledInClass<bUnrealField, CompiledInType>::RegisterUnrealFunction(UFunction& InFunction)
+template <typename CompiledInType, bool bUnrealField, bool bValueSemantics>
+void Apocalypse::TCompiledInClass<CompiledInType, bUnrealField, bValueSemantics>::RegisterUnrealFunction(UFunction& InFunction)
 {
 	static_assert(bUnrealField, "Cannot register UFunction on non-unreal class!");
 	
 	FunctionMap.Emplace(InFunction.GetFName(), MakeShared<FUnrealFunction>(StaticCastSharedRef<IClass>(AsShared()), InFunction));
 }
 
-template <bool bUnrealField, typename CompiledInType>
-void Apocalypse::TCompiledInClass<bUnrealField, CompiledInType>::ConditionalRegisterDefaultConstructor()
+template <typename CompiledInType, bool bUnrealField, bool bValueSemantics>
+void Apocalypse::TCompiledInClass<CompiledInType, bUnrealField, bValueSemantics>::ConditionalRegisterDefaultConstructor()
 {
-	if constexpr (!bUnrealField && bDefaultConstructible)
+	if constexpr (!(bUnrealField && TPointerIsConvertibleFromTo<CompiledInType, const volatile UObject>::Value))
 	{
+		static_assert(TIsConstructible<CompiledInType>::Value, "Non-unreal class must have default constructor!");
+		
 		FunctionMap.Emplace("__Construct", MakeShared<TConstructor<CompiledInType>>("__Construct", StaticCastSharedRef<IClass>(AsShared())));
 	}
 }
 
-template <bool bUnrealField, typename CompiledInType>
-void Apocalypse::TCompiledInClass<bUnrealField, CompiledInType>::ConditionalRegisterDestructor()
+template <typename CompiledInType, bool bUnrealField, bool bValueSemantics>
+void Apocalypse::TCompiledInClass<CompiledInType, bUnrealField, bValueSemantics>::ConditionalRegisterDestructor()
 {
 	if constexpr (!bUnrealField && bDestructible)
 	{
@@ -369,16 +427,18 @@ void Apocalypse::TCompiledInClass<bUnrealField, CompiledInType>::ConditionalRegi
 
 // Helper macros
 
-#define BEGIN_APOCALYPSE_CLASS_EX(ClassName, bUnrealField) \
-struct FAutoCompiledInClass_##ClassName : Apocalypse::TAutoCompiledInClass<bUnrealField, ClassName, FAutoCompiledInClass_##ClassName> \
+#define BEGIN_APOCALYPSE_CLASS_EX(ClassName, bUnrealField, bValueSemantics) \
+struct FAutoCompiledInClass_##ClassName : Apocalypse::TAutoCompiledInClass<ClassName, bUnrealField, bValueSemantics, FAutoCompiledInClass_##ClassName> \
 { \
 	using StaticClass = ClassName; \
 	inline static FName StaticClassName = #ClassName; \
-	void SetupClass(TSharedPtr<Apocalypse::TCompiledInClass<bUnrealField, ClassName>> Class) \
+	void SetupClass(TSharedPtr<CompiledInClassType> Class) \
 	{ \
 
-#define BEGIN_APOCALYPSE_CLASS(ClassName) BEGIN_APOCALYPSE_CLASS_EX(ClassName, false)
-#define BEGIN_UNREAL_APOCALYPSE_CLASS(ClassName) BEGIN_APOCALYPSE_CLASS_EX(ClassName, true)
+#define BEGIN_APOCALYPSE_CLASS(ClassName) BEGIN_APOCALYPSE_CLASS_EX(ClassName, false, false)
+#define BEGIN_APOCALYPSE_STRUCT(ClassName) BEGIN_APOCALYPSE_CLASS_EX(ClassName, false, true)
+#define BEGIN_APOCALYPSE_UCLASS(ClassName) BEGIN_APOCALYPSE_CLASS_EX(ClassName, true, false)
+#define BEGIN_APOCALYPSE_USTRUCT(ClassName) BEGIN_APOCALYPSE_CLASS_EX(ClassName, true, true)
 
 #define APOCALYPSE_STATIC_FUNCTION(FunctionName) Class->RegisterStaticFunction(#FunctionName, &StaticClass::FunctionName);
 
