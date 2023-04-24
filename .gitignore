@@ -10,3 +10,7 @@ Apoc.sln
 Developer
 Developers
 NetCore
+UnLua
+bin
+obj
+*.dll
