@@ -3,76 +3,51 @@
 
 #include "ApocTransferProtocol.h"
 
-#include "ApocObjectModel.h"
-
-namespace Apocalypse::Aptp_Private
+void FAptpEngine::Recv(FAptpMessage& Message)
 {
-	void ProcessCall(IClass& Class, IFunction& Function, void* Buffer)
-	{
-		Function(Buffer);
-	}
+	// C# calls C++, three cases:
+	// 1. Call UFunction.
+	// 2. Access UProperty.
+	// 3. Call container or delegate exported function.
+	UObject* This = nullptr;
 	
-	void ProcessGetPropertyValue(IClass& Class, IProperty& PropertyName, void* Buffer)
+	bool bFunction = true;
+	bool bProperty = true;
+	if (bFunction)
 	{
-		
-	}
+		// TODO: Convert Message to UFunction params.
+		void* Params = nullptr;
 
-	void ProcessGetEnumValue(IEnum& Enum, IEnumValue& ValueName, void* Buffer)
-	{
-		
-	}
-	
-	void ProcessSet(IClass& Class, IProperty& PropertyName, void* Buffer)
-	{
-		
-	}
-	
-}
+		UFunction* Function = nullptr;
+		if (Function)
+		{
+			This->ProcessEvent(Function, Params);
+		}
 
-void Apocalypse::FAptpProcessor::Process(const FAptpMessage& Message) const
-{
-	TSharedPtr<IType>* Type = GetRegistry().TypeMap.Find(Message.TypeName);
-	if (!Type)
-	{
-		return;
+		FOutParmRec* Rec = nullptr;
+		while (Rec)
+		{
+			// TODO: Copy values back to Message.
+			Rec = Rec->NextOutParm;
+		}
 	}
-	
-	switch (Message.OpCode)
+	else if (bProperty)
 	{
-	case EAptpOpCode::Call:
+		FProperty* Property = nullptr;
+		
+		bool bRead = true;
+		if (bRead)
 		{
-			if (IClass* Class = (*Type)->AsClass().Get())
-			{
-				if (IFunction* Function = Class->GetFunction(Message.MemberName).Get())
-				{
-					Aptp_Private::ProcessCall(*Class, *Function, Message.Buffer);
-				}
-			}
-		} break;
-	case EAptpOpCode::Get:
+			void** Return = Property->ContainerPtrToValuePtr<void*>(This);
+			// TODO: Copy Return back to Message.
+		}
+		else
 		{
-			if (IClass* Class = (*Type)->AsClass().Get())
-			{
-				
-			}
-			else
-			{
-				
-			}
-		} break;
-	case EAptpOpCode::Set:
-		{
-			if (IClass* Class = (*Type)->AsClass().Get())
-			{
-				
-			}
-		} break;
-	default: break;
+			*Property->ContainerPtrToValuePtr<void*>(This) = nullptr;
+		}
 	}
-}
-
-const Apocalypse::FAptpProcessor& Apocalypse::GetAptpProcessor()
-{
-	static FAptpProcessor Processor;
-	return Processor;
+	else
+	{
+		// TODO: How?
+	}
 }

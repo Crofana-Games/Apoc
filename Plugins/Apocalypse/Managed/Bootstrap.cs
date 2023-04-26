@@ -2,18 +2,19 @@
 
 namespace Apocalypse;
 
-public enum EType
+public unsafe struct InitArgs
 {
-    None,
-    A,
-    B,
+    public delegate* unmanaged<AptpMessage*, void> UnmanagedRecvFunc;
 }
 
-public class Bootstrap
+public unsafe class Bootstrap
 {
+    
     [UnmanagedCallersOnly]
-    public static void Startup()
+    public static void Startup(InitArgs args)
     {
+        AptpEngine.NativeProcess = args.UnmanagedRecvFunc;
+        
         Console.WriteLine("Apocalypse Startup!!!");
     }
 }

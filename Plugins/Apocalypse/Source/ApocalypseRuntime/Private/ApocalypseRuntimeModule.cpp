@@ -27,50 +27,88 @@ class FApocalypseRuntimeModule : public IApocalypseRuntimeModule
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	// End IModuleInterface
+
+	void StartCLR();
 };
 
 IMPLEMENT_MODULE(FApocalypseRuntimeModule, ApocalypseRuntime)
 
+enum class EAptpOpcode : uint8
+{
+	Call,
+	Get,
+	Set,
+};
+
+enum class EAptpSlotType : uint8
+{
+	UInt8,
+	Int8,
+	UInt16,
+	Int16,
+	UInt32,
+	Int32,
+	UInt64,
+	Int64,
+	Float,
+	Double,
+	Boolean,
+	String,
+	Pointer,
+};
+
+struct FAptpSlot
+{
+	EAptpSlotType Type;
+};
+
+struct FAptp
+{
+	EAptpOpcode Opcode;
+	const WIDECHAR* TypeName;
+	const WIDECHAR* MemberName;
+	int32 SlotNum;
+	FAptpSlot* Slots;
+
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("APTP: { OpCode: %d, TypeName: %s, MemberName: %s, Slot1: { Type: %d } }"), Opcode, TypeName, MemberName, Slots[1].Type);
+	}
+};
+
+void Process(FAptp* Aptp)
+{
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *Aptp->ToString());
+	Aptp->Opcode = EAptpOpcode::Set;
+}
+
 void FApocalypseRuntimeModule::StartupModule()
 {
-	Apocalypse::GetRegistry(); // Create registry and process auto registration.
-	
-	for (auto Entry : Apocalypse::GetRegistry().TypeMap)
+	StartCLR();
+
+	FAptp Aptp;
+	Aptp.Opcode = EAptpOpcode::Call;
+	Aptp.TypeName = TEXT("Player");
+	Aptp.MemberName = TEXT("Attack");
+	Aptp.SlotNum = 3;
+
+	FAptpSlot Slots[3];
+	Aptp.Slots = Slots;
+
+	for (int32 i = 0; i < Aptp.SlotNum; i++)
 	{
-		TSharedPtr<Apocalypse::IClass> Class = Entry.Value->AsClass();
-		if (!Class)
-		{
-			continue;
-		}
-		
-		UE_LOG(LogTemp, Warning, TEXT("Class [%s] Registered!!!"), *Entry.Key.ToString());
-		TMap<FName, TSharedPtr<Apocalypse::IFunction>> FunctionMap;
-		Class->GetFunctionMap(FunctionMap);
-		for (auto FuncEntry : FunctionMap)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("    Function [%s] Registered!!!"), *FuncEntry.Key.ToString());
-		}
-
-
-		// (*FunctionMap["StaticPrint"])(&Rand);
-		//
-		// uint8* Parm = (uint8*)FMemory::Malloc(sizeof(void*) + sizeof(int32));
-		// (*FunctionMap["__Construct"])(Parm);
-		// *(int32*)(Parm + sizeof(void*)) = Rand;
-		// (*FunctionMap["Print"])(Parm);
-		// (*FunctionMap["__Destruct"])(Parm);
-		// FMemory::Free(Parm);
+		Slots[i].Type = (EAptpSlotType)i;
 	}
+	
+	Process(&Aptp);
+}
 
-	int32 Rand = FMath::RandRange(100, 1000);
-	
-	Apocalypse::FAptpMessage Message;
-	Message.OpCode = Apocalypse::EAptpOpCode::Call;
-	Message.TypeName = "FRecord";
-	Message.MemberName = "StaticPrint";
-	Message.Buffer = &Rand;
-	Apocalypse::GetAptpProcessor().Process(Message);
-	
+void FApocalypseRuntimeModule::ShutdownModule()
+{
+}
+
+void FApocalypseRuntimeModule::StartCLR()
+{
 	const FString HostFXRPath = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT(HOSTFXR_PATH));
 	void* HostFXR = FPlatformProcess::GetDllHandle(*HostFXRPath);
 	check(HostFXR);
@@ -93,17 +131,23 @@ void FApocalypseRuntimeModule::StartupModule()
 	check(LoadAssemblyAndGetFunctionPointer);
 
 	CloseHostFXR(Handle);
-
+	
 	const FString Assembly = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("Apocalypse/Content/Assemblies/Apocalypse.dll"));
-	const FString Type = TEXT("Apocalypse.Bootstrap, Apocalypse");
-	const FString Method = TEXT("Startup");
-	void(*Entry)() = nullptr;
-	LoadAssemblyAndGetFunctionPointer(*Assembly, *Type, *Method, UNMANAGEDCALLERSONLY_METHOD, nullptr, (void**)&Entry);
-	check(Entry);
 
-	Entry();
-}
+	{
+		const FString Type = TEXT("Apocalypse.Bootstrap, Apocalypse");
+		const FString Method = TEXT("Startup");
+		void(*Entry)(void*) = nullptr;
+		LoadAssemblyAndGetFunctionPointer(*Assembly, *Type, *Method, UNMANAGEDCALLERSONLY_METHOD, nullptr, (void**)&Entry);
+		check(Entry);
 
-void FApocalypseRuntimeModule::ShutdownModule()
-{
+		Entry(&FAptpEngine::Recv);
+	}
+
+	{
+		const FString Type = TEXT("Apocalypse.AptpEngine, Apocalypse");
+		const FString Method = TEXT("Recv");
+		LoadAssemblyAndGetFunctionPointer(*Assembly, *Type, *Method, UNMANAGEDCALLERSONLY_METHOD, nullptr, (void**)&FAptpEngine::ManagedRecvFunc);
+		check(FAptpEngine::ManagedRecvFunc);
+	}
 }
