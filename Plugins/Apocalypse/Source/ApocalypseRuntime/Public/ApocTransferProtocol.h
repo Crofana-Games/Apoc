@@ -109,6 +109,7 @@ class FAptpEngine
 	friend class FApocalypseRuntimeModule;
 public:
 	static void Send(FAptpMessage& Message) { ManagedRecvFunc(Message); }
+private:
 	static void Recv(FAptpMessage& Message);
 private:
 	using FManagedRecvFunc = void(*)(FAptpMessage&);

@@ -22,6 +22,8 @@ public enum AptpSlotType : byte
     Boolean,
 
     String,
+    
+    Object,
 
     Pointer,
 
@@ -32,7 +34,6 @@ public enum AptpSlotSubtype : sbyte
 {
     None,
 
-    Object,
     Struct,
 	
     Array,
@@ -60,47 +61,50 @@ public enum AptpSlotFlags : ulong
 
 public struct AptpHeader
 {
-    uint Version;
+    public uint Version;
+    public IntPtr Member;
 };
 
 public unsafe struct AptpBody
 {
-    int Length;
-    AptpSlot* Slots;
+    public int Length;
+    public AptpSlot* Slots;
 };
 
 [StructLayout(LayoutKind.Explicit)]
 public struct AptpSlotContent
 {
-    [FieldOffset(0)] byte UInt8;
-    [FieldOffset(0)] sbyte Int8;
-    [FieldOffset(0)] ushort UInt16;
-    [FieldOffset(0)] short Int16;
-    [FieldOffset(0)] uint UInt32;
-    [FieldOffset(0)] int Int32;
-    [FieldOffset(0)] ulong UInt64;
-    [FieldOffset(0)] long Int64;
+    [FieldOffset(0)] public byte UInt8;
+    [FieldOffset(0)] public sbyte Int8;
+    [FieldOffset(0)] public ushort UInt16;
+    [FieldOffset(0)] public short Int16;
+    [FieldOffset(0)] public uint UInt32;
+    [FieldOffset(0)] public int Int32;
+    [FieldOffset(0)] public ulong UInt64;
+    [FieldOffset(0)] public long Int64;
     
-    [FieldOffset(0)] float Float;
-    [FieldOffset(0)] double Double;
+    [FieldOffset(0)] public float Float;
+    [FieldOffset(0)] public double Double;
     
-    [FieldOffset(0)] IntPtr String;
+    [FieldOffset(0)] public IntPtr String;
 
-    [FieldOffset(0)] IntPtr Pointer;
+    [FieldOffset(0)] public ObjectKey Object;
+
+    [FieldOffset(0)] public IntPtr Pointer;
 };
 
 public struct AptpSlot
 {
-    AptpSlotType Type;
-    AptpSlotSubtype Subtype;
-    AptpSlotFlags Flags;
-    AptpSlotContent Content;
+    public AptpSlotType Type;
+    public AptpSlotSubtype Subtype;
+    public AptpSlotFlags Flags;
+    public AptpSlotContent Content;
 };
 
 public struct AptpMessage
 {
-    AptpHeader Header;
-    AptpBody Body;
+    public AptpHeader Header;
+    public AptpBody Body;
 };
 
 public unsafe class AptpEngine
@@ -113,7 +117,7 @@ public unsafe class AptpEngine
     }
 
     [UnmanagedCallersOnly]
-    public static void Recv(AptpMessage* message)
+    private static void Recv(AptpMessage* message)
     {
         // C++ calls C# function, only one case.
         

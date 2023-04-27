@@ -33,74 +33,9 @@ class FApocalypseRuntimeModule : public IApocalypseRuntimeModule
 
 IMPLEMENT_MODULE(FApocalypseRuntimeModule, ApocalypseRuntime)
 
-enum class EAptpOpcode : uint8
-{
-	Call,
-	Get,
-	Set,
-};
-
-enum class EAptpSlotType : uint8
-{
-	UInt8,
-	Int8,
-	UInt16,
-	Int16,
-	UInt32,
-	Int32,
-	UInt64,
-	Int64,
-	Float,
-	Double,
-	Boolean,
-	String,
-	Pointer,
-};
-
-struct FAptpSlot
-{
-	EAptpSlotType Type;
-};
-
-struct FAptp
-{
-	EAptpOpcode Opcode;
-	const WIDECHAR* TypeName;
-	const WIDECHAR* MemberName;
-	int32 SlotNum;
-	FAptpSlot* Slots;
-
-	FString ToString() const
-	{
-		return FString::Printf(TEXT("APTP: { OpCode: %d, TypeName: %s, MemberName: %s, Slot1: { Type: %d } }"), Opcode, TypeName, MemberName, Slots[1].Type);
-	}
-};
-
-void Process(FAptp* Aptp)
-{
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *Aptp->ToString());
-	Aptp->Opcode = EAptpOpcode::Set;
-}
-
 void FApocalypseRuntimeModule::StartupModule()
 {
 	StartCLR();
-
-	FAptp Aptp;
-	Aptp.Opcode = EAptpOpcode::Call;
-	Aptp.TypeName = TEXT("Player");
-	Aptp.MemberName = TEXT("Attack");
-	Aptp.SlotNum = 3;
-
-	FAptpSlot Slots[3];
-	Aptp.Slots = Slots;
-
-	for (int32 i = 0; i < Aptp.SlotNum; i++)
-	{
-		Slots[i].Type = (EAptpSlotType)i;
-	}
-	
-	Process(&Aptp);
 }
 
 void FApocalypseRuntimeModule::ShutdownModule()
@@ -135,13 +70,21 @@ void FApocalypseRuntimeModule::StartCLR()
 	const FString Assembly = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("Apocalypse/Content/Assemblies/Apocalypse.dll"));
 
 	{
+		struct FInitArgs
+		{
+			void* UnmanagedRecvFunc;
+		};
+		
 		const FString Type = TEXT("Apocalypse.Bootstrap, Apocalypse");
 		const FString Method = TEXT("Startup");
-		void(*Entry)(void*) = nullptr;
+		void(*Entry)(FInitArgs) = nullptr;
 		LoadAssemblyAndGetFunctionPointer(*Assembly, *Type, *Method, UNMANAGEDCALLERSONLY_METHOD, nullptr, (void**)&Entry);
 		check(Entry);
 
-		Entry(&FAptpEngine::Recv);
+		FInitArgs InitArgs;
+		InitArgs.UnmanagedRecvFunc = &FAptpEngine::Recv;
+
+		Entry(InitArgs);
 	}
 
 	{
