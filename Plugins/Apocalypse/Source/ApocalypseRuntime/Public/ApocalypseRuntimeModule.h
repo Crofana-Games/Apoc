@@ -19,4 +19,7 @@ public:
 	{
 		return FModuleManager::Get().IsModuleLoaded("ApocalypseRuntime");
 	}
+
+public:
+	virtual void* GetDotNetFunctionPointer(FString Type, FString Method) = 0;
 };

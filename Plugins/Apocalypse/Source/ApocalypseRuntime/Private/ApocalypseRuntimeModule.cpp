@@ -2,11 +2,9 @@
 
 #include "ApocalypseRuntimeModule.h"
 
-#include "ApocObjectModel.h"
 #include "ApocTransferProtocol.h"
 #include "coreclr_delegates.h"
 #include "hostfxr.h"
-#include "TestCompiledInClass.h"
 
 #ifdef PLATFORM_WINDOWS
 	#define HOSTFXR_PATH "Apocalypse/Source/ThirdParty/Win64/HostFXR/hostfxr.dll"
@@ -20,18 +18,38 @@ using FCloseHostFXR = hostfxr_close_fn;
 using FHostFXRHandle = hostfxr_handle;
 
 using FLoadAssemblyAndGetFunctionPointer = load_assembly_and_get_function_pointer_fn;
+using FGetFunctionPointer = get_function_pointer_fn;
 
 class FApocalypseRuntimeModule : public IApocalypseRuntimeModule
 {
+
+public:
+	virtual void* GetDotNetFunctionPointer(FString Type, FString Method) override;
+	
 	// Begin IModuleInterface
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	// End IModuleInterface
 
 	void StartCLR();
+
+private:
+	FLoadAssemblyAndGetFunctionPointer LoadAssemblyAndGetFunctionPointer;
+	FGetFunctionPointer GetFunctionPointer;
 };
 
 IMPLEMENT_MODULE(FApocalypseRuntimeModule, ApocalypseRuntime)
+
+void* FApocalypseRuntimeModule::GetDotNetFunctionPointer(FString Type, FString Method)
+{
+	const FString Assembly = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("Apocalypse/Content/Assemblies/Apocalypse.dll"));
+	
+	void* Result = nullptr;
+	FString s = FString::Printf(TEXT("Apocalypse.%s, Apocalypse"), *Type);
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *s);
+	LoadAssemblyAndGetFunctionPointer(*Assembly, TEXT("Apocalypse.Bootstrap, Apocalypse"), *Method, UNMANAGEDCALLERSONLY_METHOD, nullptr, &Result);
+	return Result;
+}
 
 void FApocalypseRuntimeModule::StartupModule()
 {
@@ -60,10 +78,11 @@ void FApocalypseRuntimeModule::StartCLR()
 	InitializeHostFxr(*RuntimeConfigPath, nullptr, &Handle);
 	check(Handle);
 
-	void* FP = nullptr;
-	GetRuntimeDelegate(Handle, hdt_load_assembly_and_get_function_pointer, &FP);
-	FLoadAssemblyAndGetFunctionPointer LoadAssemblyAndGetFunctionPointer = (FLoadAssemblyAndGetFunctionPointer)FP;
+	GetRuntimeDelegate(Handle, hdt_load_assembly_and_get_function_pointer, (void**)&LoadAssemblyAndGetFunctionPointer);
 	check(LoadAssemblyAndGetFunctionPointer);
+
+	GetRuntimeDelegate(Handle, hdt_get_function_pointer, (void**)&GetFunctionPointer);
+	check(GetFunctionPointer);
 
 	CloseHostFXR(Handle);
 	

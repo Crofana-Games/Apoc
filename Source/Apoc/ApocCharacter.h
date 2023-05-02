@@ -7,11 +7,20 @@
 #include "InputActionValue.h"
 #include "ApocCharacter.generated.h"
 
+DECLARE_DYNAMIC_DELEGATE(FTestDelegate);
+
 
 UCLASS(config=Game)
 class AApocCharacter : public ACharacter
 {
 	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	FTestDelegate GetDel();
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void GetOutDel(FTestDelegate& OutDel);
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))

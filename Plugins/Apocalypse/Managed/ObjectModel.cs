@@ -1,36 +1,35 @@
-﻿namespace Apocalypse;
+﻿using System.Reflection;
+
+namespace Apocalypse;
 
 /// <summary>
-/// A stub object who handles a native apocalypse object.
+/// A stub object who handles a native object by some way.
 /// </summary>
 public interface IStub
 {
-    /// <summary>
-    /// Pointer to the actual object.
-    /// </summary>
-    IntPtr NativeObject { get; }
+    public IntPtr NativePtr { get; }
 }
 
-/// <summary>
-/// Mirrors FObjectKey.
-/// </summary>
-public struct ObjectKey
+public static class ObjectRegistry
 {
-    public int Index;
-    public int Serial;
-
-    public override int GetHashCode()
+    public static Object? Get(IntPtr pointer)
     {
-        return Index ^ Serial;
+        _objectLookup.TryGetValue(pointer, out Object? obj);
+        return obj;
     }
+
+    private static Dictionary<IntPtr, Object> _objectLookup = new();
 }
 
-public class Object : IStub
+public static class ReflectionRegistry
 {
-    public IntPtr NativeObject { get; } = IntPtr.Zero;
-}
+    public static MethodInfo? GetMethodInfoByToken(long memberToken)
+    {
+        return null;
+    }
 
-public class a : Object
-{
-    
+    public static long GetNativeTokenByName(string name)
+    {
+        return 0;
+    }
 }

@@ -3,10 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/Object.h"
-#include "ApocTransferProtocol.generated.h"
 
-enum class EAptpSlotType : uint8
+enum class EAptpSlotType
 {
 	None,
 	
@@ -26,49 +24,41 @@ enum class EAptpSlotType : uint8
 
 	String,
 
+	Object,
 	Pointer,
 
 	Num,
 };
 
-enum class EAptpSlotSubtype : uint8
-{
-	None,
-
-	Object,
-	Struct,
-	
-	Array,
-	Map,
-	Set,
-	
-	Delegate,
-	MulticastDelegate,
-};
-
-enum class EAptpSlotFlags : uint64
+enum class EAptpSlotFlags
 {
 	None = 0,
 
-	Parameter = 1 << 0,
+	Parameter = 1 << 10,
 	
-	ConstParameter = 1 << 1 | Parameter,
-	RefParameter = 1 << 2 | Parameter,
-	OutParameter = 1 << 3 | Parameter,
-	ReturnParameter = 1 << 4 | Parameter,
+	ThisParameter = 1 << 11 | Parameter, 
+	OutParameter = 1 << 12 | Parameter,
+	ReturnParameter = 1 << 13 | Parameter,
 
 	All = -1,
 };
 
 struct FAptpHeader
 {
-	uint32 Version;
+	int64 Token;
+
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("{ Token: %llu }"), Token);
+	}
 };
 
 struct FAptpBody
 {
 	int32 Length;
 	struct FAptpSlot* Slots;
+
+	FString ToString() const;
 };
 
 union FAptpSlotContent
@@ -85,6 +75,8 @@ union FAptpSlotContent
 	float Float;
 	double Double;
 
+	uint8 Boolean;
+
 	const WIDECHAR* String;
 
 	void* Pointer;
@@ -93,25 +85,76 @@ union FAptpSlotContent
 struct FAptpSlot
 {
 	EAptpSlotType Type;
-	EAptpSlotSubtype Subtype;
 	EAptpSlotFlags Flags;
 	FAptpSlotContent Content;
+
+	FString ToString() const;
 };
 
 struct FAptpMessage
 {
 	FAptpHeader Header;
 	FAptpBody Body;
+
+	FString ToString() const
+	{
+		return FString::Printf(TEXT("{ Header: %s, Body: %s }"), *Header.ToString(), *Body.ToString());
+	}
+};
+
+struct APOCALYPSERUNTIME_API IAptpProcessor
+{
+	virtual ~IAptpProcessor() {  }
+	virtual int32 Process(FAptpMessage& Message) = 0;
+};
+
+class APOCALYPSERUNTIME_API FAptpProcessor_StaticUFunction : public IAptpProcessor
+{
+	
+};
+
+class APOCALYPSERUNTIME_API FAptpProcessor_MemberUFunction : public IAptpProcessor
+{
+public:
+	FAptpProcessor_MemberUFunction(FName InFunctionName);
+	virtual int32 Process(FAptpMessage& Message) override;
+private:
+	FName FunctionName;
+};
+
+class APOCALYPSERUNTIME_API FAptpProcessor_UProperty : public IAptpProcessor
+{
+	
+};
+
+class APOCALYPSERUNTIME_API FAptpProcessor_GlobalFunction : public IAptpProcessor
+{
+	
+};
+
+class APOCALYPSERUNTIME_API FAptpProcessor_MemberFunction : public IAptpProcessor
+{
+	
+};
+
+class APOCALYPSERUNTIME_API FAptpProcessorRegistry
+{
+public:
+	static int64 AllocateToken();
+	static void RegisterProcessor(int64 Token, IAptpProcessor& Processor);
+	static IAptpProcessor* GetProcessor(int64 Token);
+private:
+	static TMap<int64, IAptpProcessor*>& GetLookup();
 };
 
 class FAptpEngine
 {
 	friend class FApocalypseRuntimeModule;
 public:
-	static void Send(FAptpMessage& Message) { ManagedRecvFunc(Message); }
+	static int32 Send(FAptpMessage& Message) { return ManagedRecvFunc(Message); }
 private:
-	static void Recv(FAptpMessage& Message);
+	static int32 Recv(FAptpMessage& Message);
 private:
-	using FManagedRecvFunc = void(*)(FAptpMessage&);
-	static FManagedRecvFunc ManagedRecvFunc;
+	using FManagedRecvFunc = int32(*)(FAptpMessage&);
+	inline static FManagedRecvFunc ManagedRecvFunc = nullptr;
 };
