@@ -22,6 +22,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void GetOutDel(FTestDelegate& OutDel);
 
+	UFUNCTION()
+	int32 GetF(UObject* Obj, float F) { return 0; }
+
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;

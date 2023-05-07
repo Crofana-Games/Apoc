@@ -6,8 +6,20 @@
 #include "Modules/ModuleInterface.h"
 #include "Modules/ModuleManager.h"
 
+class IApcDomainInterface;
+
+struct FApcAssemblyLoadRequest
+{
+	IApcDomainInterface* Domain;
+	FString AssemblyPath;
+	FString EntryTypeName;
+	FString EntryMethodName;
+	void* Userdata = nullptr;
+};
+
 class IApocalypseRuntimeModule : public IModuleInterface
 {
+	
 public:
 	static FORCEINLINE IApocalypseRuntimeModule& Get()
 	{
@@ -21,5 +33,8 @@ public:
 	}
 
 public:
-	virtual void* GetDotNetFunctionPointer(FString Type, FString Method) = 0;
+	virtual void RegisterDomain(IApcDomainInterface* Domain) = 0;
+	virtual void LoadAssembly(const FApcAssemblyLoadRequest& Request) = 0;
+	virtual void UnregisterDomain(IApcDomainInterface* Domain) = 0;
+	
 };

@@ -18,7 +18,7 @@
 		{
 			"Name": "ApocalypseRuntime",
 			"Type": "Runtime",
-			"LoadingPhase": "PreDefault"
+			"LoadingPhase": "EarliestPossible"
 		}
 	]
 }

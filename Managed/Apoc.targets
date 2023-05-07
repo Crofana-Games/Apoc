@@ -1,0 +1,5 @@
+<Project>
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <Exec Command="copy $(TargetPath) $(SolutionDir)..\Content\Assemblies\$(TargetFileName)" />
+    </Target>
+</Project>
