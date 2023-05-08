@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Loader;
 
 namespace Kernel;
 
@@ -50,7 +51,7 @@ internal unsafe class Entry
     [UnmanagedCallersOnly]
     public static void LoadAssembly(ApcAssemblyLoadRequest request)
     {
-        var domain = GCHandle.FromIntPtr(request.Domain).Target as ApcDomain;
+        var domain = request.Domain != IntPtr.Zero ? GCHandle.FromIntPtr(request.Domain).Target as ApcDomain : AssemblyLoadContext.Default;
         if (domain is null)
         {
             return;

@@ -17,12 +17,9 @@ namespace Apocalypse
  * 
  */
 UCLASS()
-class APOCALYPSERUNTIME_API UApcGameDomain : public UEngineSubsystem, public IApcDomainInterface
+class APOCALYPSERUNTIME_API UApcGameDomain : public UGameInstanceSubsystem, public IApcDomainInterface
 {
 	GENERATED_BODY()
-
-public:
-	static ThisClass& Get() { return *GEngine->GetEngineSubsystem<ThisClass>(); }
 
 public:
 	UApcGameDomain();
@@ -32,13 +29,5 @@ public:
 	virtual void Deinitialize() override;
 	
 	virtual FName GetDomainName() const override;
-
-private:
-	static bool CallFunction(const WIDECHAR* FunctionName, Apocalypse::FManagedObject* ThisStub, Apocalypse::FManagedValue* Params);
-	static bool GetProperty(const WIDECHAR* PropertyName, Apocalypse::FManagedObject* ThisStub, Apocalypse::FManagedValue* ReturnValue);
-	static bool SetProperty(const WIDECHAR* PropertyName, Apocalypse::FManagedObject* ThisStub, Apocalypse::FManagedValue* NewValue);
-
-private:
-	TSharedPtr<Apocalypse::IReflectionContext> ReflectionContext;
 	
 };

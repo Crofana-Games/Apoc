@@ -10,7 +10,7 @@ class IApcDomainInterface;
 
 struct FApcAssemblyLoadRequest
 {
-	IApcDomainInterface* Domain;
+	IApcDomainInterface* Domain = nullptr;
 	FString AssemblyPath;
 	FString EntryTypeName;
 	FString EntryMethodName;

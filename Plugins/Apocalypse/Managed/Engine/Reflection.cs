@@ -29,7 +29,7 @@ public struct ManagedValue
 
 internal unsafe static class Reflection
 {
-    public static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> CallFunction;
-    public static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> GetProperty;
-    public static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> SetProperty;
+    internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> CallFunction;
+    internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> GetProperty;
+    internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> SetProperty;
 }

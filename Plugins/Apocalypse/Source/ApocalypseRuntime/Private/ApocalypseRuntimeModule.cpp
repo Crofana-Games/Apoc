@@ -15,7 +15,7 @@
 
 struct FApcAssemblyLoadRequest_Interop
 {
-	Apocalypse::FManagedObject* Domain;
+	Apocalypse::FManagedObject* Domain = nullptr;
 	const WIDECHAR* AssemblyPath;
 	const WIDECHAR* EntryTypeName = nullptr;
 	const WIDECHAR* EntryMethodName = nullptr;
@@ -81,7 +81,10 @@ void FApocalypseRuntimeModule::RegisterDomain(IApcDomainInterface* Domain)
 void FApocalypseRuntimeModule::LoadAssembly(const FApcAssemblyLoadRequest& Request)
 {
 	FApcAssemblyLoadRequest_Interop InteropRequest;
-	InteropRequest.Domain = DomainRegistry.ToManaged(Request.Domain->_getUObject());
+	if (Request.Domain)
+	{
+		InteropRequest.Domain = DomainRegistry.ToManaged(Request.Domain->_getUObject());
+	}
 	InteropRequest.AssemblyPath = GetData(Request.AssemblyPath);
 	if (!Request.EntryTypeName.IsEmpty() && !Request.EntryMethodName.IsEmpty())
 	{
