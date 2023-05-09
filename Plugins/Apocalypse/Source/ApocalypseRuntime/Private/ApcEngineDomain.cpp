@@ -10,8 +10,8 @@
 #include "ReflectionProxies.h"
 
 UApcEngineDomain::UApcEngineDomain()
-	: ReflectionContext(MakeShareable<Apocalypse::IReflectionContext>(Apocalypse::IReflectionContext::New()))
 {
+	
 }
 
 void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
@@ -26,12 +26,21 @@ void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		struct
 		{
+			Apocalypse::IReflectionContext::FNewStub NewStub;
+		
 			using FCallUE = bool(*)(const WIDECHAR*, Apocalypse::FManagedObject*, Apocalypse::FManagedValue*);
 			FCallUE CallFunction = &ThisClass::CallFunction;
 			FCallUE GetProperty = &ThisClass::GetProperty;
 			FCallUE SetProperty = &ThisClass::SetProperty;
 
 			void(*Log)(EApcLogVerbosity, const WIDECHAR*) = &ThisClass::Log;
+
+			Apocalypse::FManagedObject*(*FindObject)(Apocalypse::FManagedObject*, Apocalypse::FManagedObject*, const WIDECHAR*, uint8) = &ThisClass::FindObject;
+			Apocalypse::FManagedObject*(*GetClass)(Apocalypse::FManagedObject*) = &ThisClass::GetClass;
+			Apocalypse::FManagedObject*(*GetOuter)(Apocalypse::FManagedObject*) = &ThisClass::GetOuter;
+			const WIDECHAR*(*GetName)(Apocalypse::FManagedObject*) = &ThisClass::GetName;
+
+			Apocalypse::FManagedObject*(*GetDefaultObject)(Apocalypse::FManagedObject*) = &ThisClass::GetDefaultObject;
 		} Userdata;
 		
 		FApcAssemblyLoadRequest Request;
@@ -42,6 +51,8 @@ void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
 		Request.Userdata = &Userdata;
 	
 		Module.LoadAssembly(Request);
+
+		ReflectionContext = MakeShareable<Apocalypse::IReflectionContext>(Apocalypse::IReflectionContext::New(Userdata.NewStub));
 	}
 }
 
@@ -141,4 +152,51 @@ void UApcEngineDomain::Log(EApcLogVerbosity Verbosity, const WIDECHAR* Message)
 			UE_LOG(LogApocalypse, Log, TEXT("%s"), Message);
 		}
 	}
+}
+
+Apocalypse::FManagedObject* UApcEngineDomain::FindObject(Apocalypse::FManagedObject* ClassStub, Apocalypse::FManagedObject* OuterStub, const WIDECHAR* Name, uint8 bExactClass)
+{
+	UApcEngineDomain& Domain = Get();
+	
+	UClass* Class = Domain.ReflectionContext->GetObject<UClass>(ClassStub);
+	UObject* Outer = Domain.ReflectionContext->GetObject(OuterStub);
+
+	return Domain.ReflectionContext->ToStub(StaticFindObject(Class, Outer, Name, (bool)bExactClass));
+}
+
+Apocalypse::FManagedObject* UApcEngineDomain::GetClass(Apocalypse::FManagedObject* ThisStub)
+{
+	UApcEngineDomain& Domain = Get();
+	
+	UObject* This = Domain.ReflectionContext->GetObject(ThisStub);
+
+	return Domain.ReflectionContext->ToStub(This->GetClass());
+}
+
+Apocalypse::FManagedObject* UApcEngineDomain::GetOuter(Apocalypse::FManagedObject* ThisStub)
+{
+	UApcEngineDomain& Domain = Get();
+	
+	UObject* This = Domain.ReflectionContext->GetObject(ThisStub);
+
+	return Domain.ReflectionContext->ToStub(This->GetOuter());
+}
+
+const WIDECHAR* UApcEngineDomain::GetName(Apocalypse::FManagedObject* ThisStub)
+{
+	UApcEngineDomain& Domain = Get();
+	
+	UObject* This = Domain.ReflectionContext->GetObject(ThisStub);
+
+	FString Name = This->GetName();
+	return GetData(Name);
+}
+
+Apocalypse::FManagedObject* UApcEngineDomain::GetDefaultObject(Apocalypse::FManagedObject* ThisStub)
+{
+	UApcEngineDomain& Domain = Get();
+	
+	UClass* This = Domain.ReflectionContext->GetObject<UClass>(ThisStub);
+
+	return Domain.ReflectionContext->ToStub(This->GetDefaultObject());
 }

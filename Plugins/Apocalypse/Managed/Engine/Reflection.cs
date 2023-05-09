@@ -4,6 +4,11 @@ using System.Runtime.InteropServices;
 
 namespace Engine;
 
+public interface IStub
+{
+    IntPtr Handle { get; }
+}
+
 [StructLayout(LayoutKind.Explicit)]
 public struct ManagedValue
 {
@@ -27,9 +32,50 @@ public struct ManagedValue
     [FieldOffset(0)] public IntPtr Object;
 }
 
-internal unsafe static class Reflection
+public unsafe static class Reflection
 {
+
+    static Reflection()
+    {
+        // Register primitive types
+
+        // Register exported types
+        _stubTypeMap[Object.StaticClassPath] = typeof(Object);
+        _stubTypeMap[Class.StaticClassPath] = typeof(Class);
+    }
+
+    [UnmanagedCallersOnly]
+    internal static IntPtr NewStub(IntPtr* typeNamePtrs)
+    {
+        var typeName = Marshal.PtrToStringUni(*typeNamePtrs);
+        if (typeName is null)
+        {
+            return IntPtr.Zero;
+        }
+
+        if (!_stubTypeMap.TryGetValue(typeName, out Type? type))
+        {
+            return IntPtr.Zero;
+        }
+
+        if (!type.IsAssignableTo(typeof(IStub)))
+        {
+            return IntPtr.Zero;
+        }
+
+        var actualType = type;
+        if (type.IsGenericType)
+        {
+            // TODO: Substitute
+        }
+
+        return ((IStub)Activator.CreateInstance(actualType)!).Handle;
+    }
+
     internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> CallFunction;
     internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> GetProperty;
     internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> SetProperty;
+
+    private static Dictionary<string, Type> _stubTypeMap = new();
+
 }

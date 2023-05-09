@@ -47,6 +47,13 @@ private:
 		Fatal,
 	};
 	static void Log(EApcLogVerbosity Verbosity, const WIDECHAR* Message);
+
+	static Apocalypse::FManagedObject* FindObject(Apocalypse::FManagedObject* ClassStub, Apocalypse::FManagedObject* OuterStub, const WIDECHAR* Name, uint8 bExactClass);
+	static Apocalypse::FManagedObject* GetClass(Apocalypse::FManagedObject* ThisStub);
+	static Apocalypse::FManagedObject* GetOuter(Apocalypse::FManagedObject* ThisStub);
+	static const WIDECHAR* GetName(Apocalypse::FManagedObject* ThisStub);
+
+	static Apocalypse::FManagedObject* GetDefaultObject(Apocalypse::FManagedObject* ThisStub);
 	
 private:
 	TSharedPtr<Apocalypse::IReflectionContext> ReflectionContext;

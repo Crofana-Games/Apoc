@@ -12,6 +12,13 @@ namespace Apocalypse
 	{
 
 	public:
+		FReflectionContext(FNewStub InNewStub)
+			: NewStub(InNewStub)
+		{
+			
+		}
+
+	public:
 		virtual IClassProxy* GetClassProxy(FName ClassPath) override;
 		virtual UObject* GetObject(FManagedObject* Stub) override;
 		virtual FManagedObject* ToStub(UObject* Object) override;
@@ -19,7 +26,9 @@ namespace Apocalypse
 	private:
 		TMap<FName, TUniquePtr<IClassProxy>> ClassProxyMap;
 	
-		Apocalypse::TManagedObjectRegistry<FObjectKey> ObjectRegistry;
+		TManagedObjectRegistry<FObjectKey> ObjectRegistry;
+
+		FNewStub NewStub;
 	
 	};
 
@@ -55,12 +64,24 @@ namespace Apocalypse
 
 	FManagedObject* FReflectionContext::ToStub(UObject* Object)
 	{
-		return ObjectRegistry.ToManaged(Object);
+		FManagedObject* Stub = ObjectRegistry.ToManaged(Object);
+		if (!Stub)
+		{
+			FString Path = Object->GetClass()->GetPathName();
+			const WIDECHAR* ClassPath = GetData(Path);
+			Stub = NewStub(&ClassPath);
+			if (Stub)
+			{
+				ObjectRegistry.Register(Stub, Object);
+			}
+		}
+		
+		return Stub;
 	}
 
-	IReflectionContext* IReflectionContext::New()
+	IReflectionContext* IReflectionContext::New(FNewStub InNewStub)
 	{
-		return new FReflectionContext();
+		return new FReflectionContext(InNewStub);
 	}
 }
 

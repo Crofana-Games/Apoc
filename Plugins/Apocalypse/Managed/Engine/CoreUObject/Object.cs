@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace Engine;
 
-public unsafe partial class Object
+public unsafe partial class Object : IStub
 {
 
     public static T? FromHandle<T>(IntPtr handle) where T : Object => GCHandle.FromIntPtr(handle).Target as T;
@@ -34,7 +34,7 @@ public unsafe partial class Object
 
 
     public Class Class => FromHandle<Class>(UnmanagedGetClass(Handle))!;
-    public Object Outer => FromHandle(UnmanagedGetClass(Handle))!;
+    public Object Outer => FromHandle(UnmanagedGetOuter(Handle))!;
     public string Name => Marshal.PtrToStringUni(UnmanagedGetName(Handle))!;
 
 

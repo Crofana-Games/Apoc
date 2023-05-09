@@ -8,11 +8,6 @@ namespace Apocalypse
 	
 	union FManagedValue
 	{
-		FManagedValue()
-		{
-			FMemory::Memzero(*this);
-		}
-
 		uint8 U1;
 		uint16 U2;
 		uint32 U4;

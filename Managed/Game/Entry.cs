@@ -9,18 +9,10 @@ internal class Entry
 {
     public static void Setup(IntPtr userdata)
     {
-        Print(AssemblyLoadContext.GetLoadContext(typeof(Entry).Assembly));
-        Print(AssemblyLoadContext.Default);
+        var obj = Engine.Object.FindObject(null, null, Class.StaticClassPath);
+        Logger.Log($"Class: {obj.Class.Name} Name: {obj.Name}");
 
         Logger.Log("Game Module Setup!");
     }
 
-    private static void Print(AssemblyLoadContext alc)
-    {
-        var lst = alc.Assemblies.ToList();
-        foreach (var asm in lst)
-        {
-            Logger.Log(asm.FullName);
-        }
-    }
 }

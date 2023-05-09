@@ -7,13 +7,14 @@ namespace Engine;
 public unsafe abstract partial class Object
 {
 
+    public static string StaticClassPath = "/Script/CoreUObject.Object";
     public static Class StaticClass
     {
         get
         {
             if (_staticClass is null)
             {
-                _staticClass = FindObject<Class>(null, null, "/Script/CoreUObject.Object");
+                _staticClass = FindObject<Class>(null, null, StaticClassPath);
             }
             return _staticClass!;
         }

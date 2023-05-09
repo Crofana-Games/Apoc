@@ -18,17 +18,17 @@ internal unsafe class Entry
 
     public unsafe struct FInitArgs
     {
-        public delegate* unmanaged<IntPtr, IntPtr> createDomain;
-        public delegate* unmanaged<ApcAssemblyLoadRequest, void> loadAssembly;
-        public delegate* unmanaged<IntPtr, void> unloadDomain;
+        public delegate* unmanaged<IntPtr, IntPtr> CreateDomain;
+        public delegate* unmanaged<ApcAssemblyLoadRequest, void> LoadAssembly;
+        public delegate* unmanaged<IntPtr, void> UnloadDomain;
     }
 
     [UnmanagedCallersOnly]
     public static void Setup(FInitArgs* args)
     {
-        args->createDomain = &CreateDomain;
-        args->loadAssembly = &LoadAssembly;
-        args->unloadDomain = &UnloadDomain;
+        args->CreateDomain = &CreateDomain;
+        args->LoadAssembly = &LoadAssembly;
+        args->UnloadDomain = &UnloadDomain;
 
         Debugger.Launch();
 
