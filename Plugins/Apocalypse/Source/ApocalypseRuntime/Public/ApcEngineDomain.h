@@ -33,6 +33,9 @@ public:
 	
 	virtual FName GetDomainName() const override;
 
+public:
+	static Apocalypse::FManagedObject* NewString(FString Data);
+
 private:
 	static bool CallFunction(const WIDECHAR* FunctionName, Apocalypse::FManagedObject* ThisStub, Apocalypse::FManagedValue* Params);
 	static bool GetProperty(const WIDECHAR* PropertyName, Apocalypse::FManagedObject* ThisStub, Apocalypse::FManagedValue* ReturnValue);
@@ -51,9 +54,12 @@ private:
 	static Apocalypse::FManagedObject* FindObject(Apocalypse::FManagedObject* ClassStub, Apocalypse::FManagedObject* OuterStub, const WIDECHAR* Name, uint8 bExactClass);
 	static Apocalypse::FManagedObject* GetClass(Apocalypse::FManagedObject* ThisStub);
 	static Apocalypse::FManagedObject* GetOuter(Apocalypse::FManagedObject* ThisStub);
-	static const WIDECHAR* GetName(Apocalypse::FManagedObject* ThisStub);
+	static Apocalypse::FManagedObject* GetName(Apocalypse::FManagedObject* ThisStub);
 
 	static Apocalypse::FManagedObject* GetDefaultObject(Apocalypse::FManagedObject* ThisStub);
+
+private:
+	static Apocalypse::FManagedObject*(*ManagedNewString)(const WIDECHAR*);
 	
 private:
 	TSharedPtr<Apocalypse::IReflectionContext> ReflectionContext;

@@ -26,6 +26,7 @@ void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		struct
 		{
+			Apocalypse::FManagedObject*(*NewString)(const WIDECHAR*);
 			Apocalypse::IReflectionContext::FNewStub NewStub;
 		
 			using FCallUE = bool(*)(const WIDECHAR*, Apocalypse::FManagedObject*, Apocalypse::FManagedValue*);
@@ -38,7 +39,7 @@ void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
 			Apocalypse::FManagedObject*(*FindObject)(Apocalypse::FManagedObject*, Apocalypse::FManagedObject*, const WIDECHAR*, uint8) = &ThisClass::FindObject;
 			Apocalypse::FManagedObject*(*GetClass)(Apocalypse::FManagedObject*) = &ThisClass::GetClass;
 			Apocalypse::FManagedObject*(*GetOuter)(Apocalypse::FManagedObject*) = &ThisClass::GetOuter;
-			const WIDECHAR*(*GetName)(Apocalypse::FManagedObject*) = &ThisClass::GetName;
+			Apocalypse::FManagedObject*(*GetName)(Apocalypse::FManagedObject*) = &ThisClass::GetName;
 
 			Apocalypse::FManagedObject*(*GetDefaultObject)(Apocalypse::FManagedObject*) = &ThisClass::GetDefaultObject;
 		} Userdata;
@@ -51,6 +52,8 @@ void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
 		Request.Userdata = &Userdata;
 	
 		Module.LoadAssembly(Request);
+
+		ManagedNewString = Userdata.NewString;
 
 		ReflectionContext = MakeShareable<Apocalypse::IReflectionContext>(Apocalypse::IReflectionContext::New(Userdata.NewStub));
 	}
@@ -67,6 +70,11 @@ FName UApcEngineDomain::GetDomainName() const
 {
 	static const FString Prefix = TEXT("Domain_");
 	return FName(Prefix + GEngine->GetName());
+}
+
+Apocalypse::FManagedObject* UApcEngineDomain::NewString(FString Data)
+{
+	return ManagedNewString(GetData(Data));
 }
 
 bool UApcEngineDomain::CallFunction(const WIDECHAR* FunctionName, Apocalypse::FManagedObject* ThisStub, Apocalypse::FManagedValue* Params)
@@ -182,14 +190,13 @@ Apocalypse::FManagedObject* UApcEngineDomain::GetOuter(Apocalypse::FManagedObjec
 	return Domain.ReflectionContext->ToStub(This->GetOuter());
 }
 
-const WIDECHAR* UApcEngineDomain::GetName(Apocalypse::FManagedObject* ThisStub)
+Apocalypse::FManagedObject* UApcEngineDomain::GetName(Apocalypse::FManagedObject* ThisStub)
 {
 	UApcEngineDomain& Domain = Get();
 	
 	UObject* This = Domain.ReflectionContext->GetObject(ThisStub);
 
-	FString Name = This->GetName();
-	return GetData(Name);
+	return NewString(This->GetName());
 }
 
 Apocalypse::FManagedObject* UApcEngineDomain::GetDefaultObject(Apocalypse::FManagedObject* ThisStub)
@@ -200,3 +207,5 @@ Apocalypse::FManagedObject* UApcEngineDomain::GetDefaultObject(Apocalypse::FMana
 
 	return Domain.ReflectionContext->ToStub(This->GetDefaultObject());
 }
+
+Apocalypse::FManagedObject*(*UApcEngineDomain::ManagedNewString)(const WIDECHAR*) = nullptr;

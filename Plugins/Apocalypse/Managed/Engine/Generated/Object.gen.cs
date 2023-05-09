@@ -4,7 +4,7 @@
 
 namespace Engine;
 
-public unsafe abstract partial class Object
+public unsafe partial class Object
 {
 
     public static string StaticClassPath = "/Script/CoreUObject.Object";

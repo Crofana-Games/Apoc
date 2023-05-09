@@ -28,18 +28,18 @@ public unsafe partial class Object : IStub
 
     public Object()
     {
-        _handle = GCHandle.Alloc(this, GCHandleType.WeakTrackResurrection);
+        Handle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.WeakTrackResurrection));
     }
 
 
 
     public Class Class => FromHandle<Class>(UnmanagedGetClass(Handle))!;
     public Object Outer => FromHandle(UnmanagedGetOuter(Handle))!;
-    public string Name => Marshal.PtrToStringUni(UnmanagedGetName(Handle))!;
+    public string Name => (string)GCHandle.FromIntPtr(UnmanagedGetName(Handle)).Target!;
 
 
 
-    public IntPtr Handle => GCHandle.ToIntPtr(_handle);
+    public IntPtr Handle { get; }
 
 
 
@@ -50,8 +50,5 @@ public unsafe partial class Object : IStub
     internal static delegate* unmanaged<IntPtr, IntPtr> UnmanagedGetClass;
     internal static delegate* unmanaged<IntPtr, IntPtr> UnmanagedGetOuter;
     internal static delegate* unmanaged<IntPtr, IntPtr> UnmanagedGetName;
-
-
-    private GCHandle _handle;
 
 }

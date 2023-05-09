@@ -55,6 +55,12 @@ public unsafe static class Reflection
 
         if (!_stubTypeMap.TryGetValue(typeName, out Type? type))
         {
+            type = typeof(Object);
+            //return IntPtr.Zero;
+        }
+
+        if (type.IsAbstract)
+        {
             return IntPtr.Zero;
         }
 
@@ -72,9 +78,9 @@ public unsafe static class Reflection
         return ((IStub)Activator.CreateInstance(actualType)!).Handle;
     }
 
-    internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> CallFunction;
-    internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> GetProperty;
-    internal static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> SetProperty;
+    public static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> CallFunction;
+    public static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> GetProperty;
+    public static delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> SetProperty;
 
     private static Dictionary<string, Type> _stubTypeMap = new();
 

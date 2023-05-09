@@ -6,6 +6,8 @@ internal class Entry
 {
     private unsafe struct InitArgs
     {
+        public delegate* unmanaged<IntPtr, IntPtr> Callback_CoreNewString;
+
         public delegate* unmanaged<IntPtr*, IntPtr> Callback_Reflection_NewStub;
 
         public delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> Reflection_CallFunction;
@@ -27,6 +29,7 @@ internal class Entry
         InitArgs* args = (InitArgs*)userdata;
 
         // Callback
+        args->Callback_CoreNewString = &Core.NewString;
         args->Callback_Reflection_NewStub = &Reflection.NewStub;
 
         // Reflection API
