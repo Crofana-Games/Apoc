@@ -8,8 +8,7 @@ Intermediate
 Saved
 Developer
 Developers
-NetCore
 UnLua
 bin
 obj
-*.dll
+Content/Assemblies/*.dll

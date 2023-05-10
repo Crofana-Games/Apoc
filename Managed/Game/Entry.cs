@@ -17,13 +17,14 @@ internal class Entry
 
         Task.Delay(1000).ContinueWith(_ =>
         {
+            Logger.Error("111");
             var gameplayStaticsClass = Engine.Object.FindObject<Class>(null, null, "/Script/Engine.GameplayStatics")!;
             var gameplayStaticsCDO = gameplayStaticsClass.GetDefaultObject();
 
             var functionName = Marshal.StringToHGlobalUni("GetPlayerCharacter");
             var worldContext = new ManagedValue();
             worldContext.Object = Engine.Object.FindObject(null, null,
-                "/Game/ThirdPerson/Maps/UEDPIE_0_ThirdPersonMap.ThirdPersonMap:PersistentLevel.BP_ThirdPersonCharacter_C_0")!.Handle;
+                "/Game/ThirdPerson/Maps/UEDPIE_0_ThirdPersonMap.ThirdPersonMap:PersistentLevel.DefaultPawn0")!.Handle;
             var playerIndex = new ManagedValue();
             playerIndex.I4 = 0;
             ManagedValue* Params = stackalloc ManagedValue[]

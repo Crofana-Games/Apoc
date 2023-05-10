@@ -8,7 +8,7 @@
 #include "Interop.h"
 
 #ifdef PLATFORM_WINDOWS
-	#define HOSTFXR_PATH "Apocalypse/Source/ThirdParty/Win64/HostFXR/hostfxr.dll"
+	#define HOSTFXR_PATH "Apocalypse/Source/ThirdParty/dotnet/host/fxr/7.0.5/hostfxr.dll"
 #else
 	#error "Unknown platform"
 #endif
