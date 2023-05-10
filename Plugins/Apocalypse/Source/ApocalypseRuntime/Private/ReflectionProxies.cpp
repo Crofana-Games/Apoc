@@ -151,14 +151,15 @@ namespace Apocalypse
 		virtual bool SetProperty(FName PropertyName, UObject* This, FManagedValue* NewValue) const override;
 
 		virtual IReflectionContext& GetContext() const override { return *Context; }
-		virtual const IClassProxy* GetSuper() const override;
 		virtual bool IsValid() const override { return Inner.IsValid(); }
+
+	protected:
+		virtual const IClassProxy* GetSuper() const override;
+		virtual const FFunctionProxy* GetFunctionExcludeSuper(FName FunctionName) const override;
+		virtual const FPropertyProxy* GetPropertyExcludeSuper(FName PropertyName) const override;
 
 	private:
 		void Link();
-
-		const FFunctionProxy* GetFunction(FName FunctionName) const;
-		const FPropertyProxy* GetProperty(FName PropertyName) const;
 
 	private:
 		const UClass* operator*() const;
@@ -210,12 +211,12 @@ namespace Apocalypse
 		IReflectionContext* Context;
 	};
 
-#define DECLARE_PROPERTY_VISITOR_EX(PropertyType, SuperPropertyType) \
-class PropertyType##Visitor : public SuperPropertyType \
+#define DECLARE_PROPERTY_VISITOR_EX(PropertyType, VisitorType, SuperPropertyType) \
+class VisitorType : public SuperPropertyType \
 { \
 	using Super = SuperPropertyType; \
 public: \
-	explicit PropertyType##Visitor(IReflectionContext* Context, PropertyType* Property) \
+	explicit VisitorType(IReflectionContext* Context, PropertyType* Property) \
 		: Super(Context, Property) \
 		, Inner(Property) \
 	{ \
@@ -231,13 +232,15 @@ private: \
 	PropertyType* Inner; \
 };
 
-#define DECLARE_PROPERTY_VISITOR(PropertyType) DECLARE_PROPERTY_VISITOR_EX(PropertyType, FPropertyVisitorBase)
+#define DECLARE_PROPERTY_VISITOR(PropertyType) DECLARE_PROPERTY_VISITOR_EX(PropertyType, PropertyType##Visitor, FPropertyVisitorBase)
 
 
 	// Primitive types
 	DECLARE_PROPERTY_VISITOR(FNumericProperty)
 
 	DECLARE_PROPERTY_VISITOR(FBoolProperty)
+
+	DECLARE_PROPERTY_VISITOR(FEnumProperty)
 
 	// String types
 	DECLARE_PROPERTY_VISITOR(FStrProperty)
@@ -247,8 +250,10 @@ private: \
 	DECLARE_PROPERTY_VISITOR(FTextProperty)
 
 	// Object types
-	DECLARE_PROPERTY_VISITOR(FObjectProperty)
+	DECLARE_PROPERTY_VISITOR_EX(FObjectPropertyBase, FObjectPropertyVisitor, FPropertyVisitorBase)
 
+	DECLARE_PROPERTY_VISITOR(FInterfaceProperty)
+	
 	DECLARE_PROPERTY_VISITOR(FStructProperty)
 
 	// Container types
@@ -268,14 +273,15 @@ private: \
 
 	// -------------------------------------------------  END PROPERTY VISITORS  -------------------------------------------------
 
-
-#define CONDITIONAL_CREATE_VISITOR(PropertyType) if (PropertyType* TypedProperty = CastField<PropertyType>(Property)) { return new PropertyType##Visitor(Context, TypedProperty); }
-
+#define CONDITIONAL_CREATE_VISITOR_EX(PropertyType, VisitorType) if (PropertyType* TypedProperty = CastField<PropertyType>(Property)) { return new VisitorType(Context, TypedProperty); }
+#define CONDITIONAL_CREATE_VISITOR(PropertyType) CONDITIONAL_CREATE_VISITOR_EX(PropertyType, PropertyType##Visitor)
+	
 	IPropertyVisitor* IPropertyVisitorOwner::CreateInnerVisitor(IReflectionContext* Context, FProperty* Property)
 	{
 		// Primitive types
 		CONDITIONAL_CREATE_VISITOR(FNumericProperty)
 		CONDITIONAL_CREATE_VISITOR(FBoolProperty)
+		CONDITIONAL_CREATE_VISITOR(FEnumProperty)
 
 		// String types
 		CONDITIONAL_CREATE_VISITOR(FStrProperty)
@@ -283,7 +289,8 @@ private: \
 		CONDITIONAL_CREATE_VISITOR(FTextProperty)
 
 		// Object types
-		CONDITIONAL_CREATE_VISITOR(FObjectProperty)
+		CONDITIONAL_CREATE_VISITOR_EX(FObjectPropertyBase, FObjectPropertyVisitor)
+		CONDITIONAL_CREATE_VISITOR(FInterfaceProperty)
 		CONDITIONAL_CREATE_VISITOR(FStructProperty)
 
 		// Container types
@@ -421,7 +428,7 @@ private: \
 
 	bool FClassProxy::GetProperty(FName PropertyName, UObject* This, FManagedValue* ReturnValue) const
 	{
-		if (const FPropertyProxy* Property = GetProperty(PropertyName))
+		if (const FPropertyProxy* Property = IClassProxy::GetProperty(PropertyName))
 		{
 			Property->CopyBack_InContainer(&This, ReturnValue);
 			return true;
@@ -432,13 +439,38 @@ private: \
 
 	bool FClassProxy::SetProperty(FName PropertyName, UObject* This, FManagedValue* NewValue) const
 	{
-		if (const FPropertyProxy* Property = GetProperty(PropertyName))
+		if (const FPropertyProxy* Property = IClassProxy::GetProperty(PropertyName))
 		{
 			Property->Copy_InContainer(NewValue, &This);
 			return true;
 		}
 
 		return false;
+	}
+
+	const IClassProxy* FClassProxy::GetSuper() const
+	{
+		return Super;
+	}
+
+	const FFunctionProxy* FClassProxy::GetFunctionExcludeSuper(FName FunctionName) const
+	{
+		if (const auto Function = FunctionMap.Find(FunctionName))
+		{
+			return Function->Get();
+		}
+
+		return nullptr;
+	}
+
+	const FPropertyProxy* FClassProxy::GetPropertyExcludeSuper(FName PropertyName) const
+	{
+		if (const auto Property = PropertyMap.Find(PropertyName))
+		{
+			return Property->Get();
+		}
+
+		return nullptr;
 	}
 
 	void FClassProxy::Link()
@@ -451,56 +483,19 @@ private: \
 		}
 
 		for (TFieldIterator<UFunction> It(Class, EFieldIteratorFlags::ExcludeSuper,
-		                                  EFieldIteratorFlags::ExcludeDeprecated,
-		                                  EFieldIteratorFlags::ExcludeInterfaces); It; ++It)
+										  EFieldIteratorFlags::ExcludeDeprecated,
+										  EFieldIteratorFlags::ExcludeInterfaces); It; ++It)
 		{
 			UFunction* Function = *It;
 			FunctionMap.Emplace(Function->GetFName(), MakeUnique<FFunctionProxy>(Context, Function));
 		}
 
 		for (TFieldIterator<FProperty> It(Class, EFieldIteratorFlags::ExcludeSuper,
-		                                  EFieldIteratorFlags::ExcludeDeprecated); It; ++It)
+										  EFieldIteratorFlags::ExcludeDeprecated); It; ++It)
 		{
 			FProperty* Property = *It;
 			PropertyMap.Emplace(Property->GetFName(), MakeUnique<FPropertyProxy>(Context, Property));
 		}
-	}
-
-	const IClassProxy* FClassProxy::GetSuper() const
-	{
-		return Super;
-	}
-
-	const FFunctionProxy* FClassProxy::GetFunction(FName FunctionName) const
-	{
-		const IClassProxy* Class = this;
-		while (Class)
-		{
-			if (const auto Function = FunctionMap.Find(FunctionName))
-			{
-				return Function->Get();
-			}
-
-			Class = Class->GetSuper();
-		}
-
-		return nullptr;
-	}
-
-	const FPropertyProxy* FClassProxy::GetProperty(FName PropertyName) const
-	{
-		const IClassProxy* Class = this;
-		while (Class)
-		{
-			if (const auto Property = PropertyMap.Find(PropertyName))
-			{
-				return Property->Get();
-			}
-
-			Class = Class->GetSuper();
-		}
-
-		return nullptr;
 	}
 
 	const UClass* FClassProxy::operator*() const
@@ -558,6 +553,28 @@ private: \
 	}
 
 	void FBoolPropertyVisitor::Destroy(void* Dest) const
+	{
+		Super::Destroy(Dest);
+	}
+
+
+	// FEnumPropertyVisitor
+	void FEnumPropertyVisitor::Initialize(void* Dest) const
+	{
+		Super::Initialize(Dest);
+	}
+
+	void FEnumPropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
+	{
+		Super::Copy(Src, Dest);
+	}
+
+	void FEnumPropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
+	{
+		Super::CopyBack(Src, Dest);
+	}
+
+	void FEnumPropertyVisitor::Destroy(void* Dest) const
 	{
 		Super::Destroy(Dest);
 	}
@@ -642,7 +659,7 @@ private: \
 
 	void FObjectPropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
-		Dest->Object = GetContext().ToStub(Inner->GetObjectPropertyValue(Src));
+		Dest->Object = GetContext().ToStub(Inner->LoadObjectPropertyValue(Src)); // Use Load instead of Get to be compatible with SoftObjectPtr.
 	}
 
 	void FObjectPropertyVisitor::Destroy(void* Dest) const
@@ -650,6 +667,37 @@ private: \
 		Super::Destroy(Dest);
 	}
 
+
+	
+	// FInterfacePropertyVisitor
+	void FInterfacePropertyVisitor::Initialize(void* Dest) const
+	{
+		Super::Initialize(Dest);
+	}
+
+	void FInterfacePropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
+	{
+		FScriptInterface Interface;
+		if (UObject* Object = GetContext().GetObject(Src->Object))
+		{
+			Interface.SetObject(Object);
+			Interface.SetInterface(Object->GetInterfaceAddress(Inner->InterfaceClass));
+		}
+		Inner->SetPropertyValue(Dest, Interface);
+	}
+
+	void FInterfacePropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
+	{
+		const FScriptInterface& Interface = Inner->GetPropertyValue(Src);
+		Dest->Object = GetContext().ToStub(Interface.GetObject());
+	}
+
+	void FInterfacePropertyVisitor::Destroy(void* Dest) const
+	{
+		Super::Destroy(Dest);
+	}
+
+	
 
 	// FStructPropertyVisitor
 	void FStructPropertyVisitor::Initialize(void* Dest) const
@@ -659,10 +707,12 @@ private: \
 
 	void FStructPropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FStructPropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FStructPropertyVisitor::Destroy(void* Dest) const
@@ -679,10 +729,12 @@ private: \
 
 	void FArrayPropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FArrayPropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FArrayPropertyVisitor::Destroy(void* Dest) const
@@ -699,10 +751,12 @@ private: \
 
 	void FMapPropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FMapPropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FMapPropertyVisitor::Destroy(void* Dest) const
@@ -719,10 +773,12 @@ private: \
 
 	void FSetPropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FSetPropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FSetPropertyVisitor::Destroy(void* Dest) const
@@ -739,10 +795,12 @@ private: \
 
 	void FDelegatePropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FDelegatePropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FDelegatePropertyVisitor::Destroy(void* Dest) const
@@ -759,10 +817,12 @@ private: \
 
 	void FMulticastDelegatePropertyVisitor::Copy(FManagedValue* Src, void* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FMulticastDelegatePropertyVisitor::CopyBack(void* Src, FManagedValue* Dest) const
 	{
+		ensure(false);
 	}
 
 	void FMulticastDelegatePropertyVisitor::Destroy(void* Dest) const
@@ -776,5 +836,37 @@ private: \
 	IClassProxy* IClassProxy::New(IReflectionContext* Context, UClass* Class)
 	{
 		return new FClassProxy(Context, Class);
+	}
+
+	const FFunctionProxy* IClassProxy::GetFunction(FName FunctionName) const
+	{
+		const IClassProxy* Class = this;
+		while (Class)
+		{
+			if (const FFunctionProxy* Function = Class->GetFunctionExcludeSuper(FunctionName))
+			{
+				return Function;
+			}
+
+			Class = Class->GetSuper();
+		}
+
+		return nullptr;
+	}
+
+	const FPropertyProxy* IClassProxy::GetProperty(FName PropertyName) const
+	{
+		const IClassProxy* Class = this;
+		while (Class)
+		{
+			if (const FPropertyProxy* Property = Class->GetPropertyExcludeSuper(PropertyName))
+			{
+				return Property;
+			}
+
+			Class = Class->GetSuper();
+		}
+
+		return nullptr;
 	}
 }

@@ -37,6 +37,9 @@ public unsafe static class Reflection
 
     static Reflection()
     {
+        // Register special types
+        _stubTypeMap["$DynamicObject"] = typeof(DynamicObject);
+
         // Register primitive types
 
         // Register exported types
@@ -55,8 +58,7 @@ public unsafe static class Reflection
 
         if (!_stubTypeMap.TryGetValue(typeName, out Type? type))
         {
-            type = typeof(Object);
-            //return IntPtr.Zero;
+            type = typeof(DynamicObject);
         }
 
         if (type.IsAbstract)

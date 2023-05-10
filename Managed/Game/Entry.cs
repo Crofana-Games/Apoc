@@ -17,12 +17,13 @@ internal class Entry
 
         Task.Delay(1000).ContinueWith(_ =>
         {
-            var gameplayStaticsClass = Engine.Object.FindObject<Class>(null, null, "Script/Engine.GameplayStatics")!;
+            var gameplayStaticsClass = Engine.Object.FindObject<Class>(null, null, "/Script/Engine.GameplayStatics")!;
             var gameplayStaticsCDO = gameplayStaticsClass.GetDefaultObject();
 
             var functionName = Marshal.StringToHGlobalUni("GetPlayerCharacter");
             var worldContext = new ManagedValue();
-            worldContext.Object = IntPtr.Zero;
+            worldContext.Object = Engine.Object.FindObject(null, null,
+                "/Game/ThirdPerson/Maps/UEDPIE_0_ThirdPersonMap.ThirdPersonMap:PersistentLevel.BP_ThirdPersonCharacter_C_0")!.Handle;
             var playerIndex = new ManagedValue();
             playerIndex.I4 = 0;
             ManagedValue* Params = stackalloc ManagedValue[]
@@ -31,10 +32,14 @@ internal class Entry
                 playerIndex,
                 new ManagedValue(),
             };
-            Reflection.CallFunction(functionName, gameplayStaticsCDO.Handle, null);
+            Reflection.CallFunction(functionName, gameplayStaticsCDO.Handle, Params);
             Marshal.FreeHGlobal(functionName);
 
             var mainPlayer = Engine.Object.FromHandle(Params[2].Object);
+            Logger.Error(mainPlayer.Name);
+            var jumpName = Marshal.StringToHGlobalUni("Jump");
+            Reflection.CallFunction(jumpName, mainPlayer.Handle, null);
+            Marshal.FreeHGlobal(jumpName);
         });
     }
 

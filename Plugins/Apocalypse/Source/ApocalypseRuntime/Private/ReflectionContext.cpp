@@ -64,6 +64,11 @@ namespace Apocalypse
 
 	FManagedObject* FReflectionContext::ToStub(UObject* Object)
 	{
+		if (!Object)
+		{
+			return nullptr;
+		}
+		
 		FManagedObject* Stub = ObjectRegistry.ToManaged(Object);
 		if (!Stub)
 		{

@@ -141,24 +141,24 @@ void UApcEngineDomain::Log(EApcLogVerbosity Verbosity, const WIDECHAR* Message)
 		case EApcLogVerbosity::Verbose:
 		{
 			UE_LOG(LogApocalypse, Verbose, TEXT("%s"), Message);
-		}
+		} break;
 		case EApcLogVerbosity::Warning:
 		{
 			UE_LOG(LogApocalypse, Warning, TEXT("%s"), Message);
-		}
+		} break;
 		case EApcLogVerbosity::Error:
 		{
 			UE_LOG(LogApocalypse, Error, TEXT("%s"), Message);
-		}
+		} break;
 		case EApcLogVerbosity::Fatal:
 		{
 			UE_LOG(LogApocalypse, Fatal, TEXT("%s"), Message);
-		}
+		} break;
 		case EApcLogVerbosity::Log:
 		default:
 		{
 			UE_LOG(LogApocalypse, Log, TEXT("%s"), Message);
-		}
+		} break;
 	}
 }
 
