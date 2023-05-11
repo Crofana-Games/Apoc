@@ -36,7 +36,6 @@ public class ApocalypseRuntime : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
-				"DotNet",
 			}
 		);
 		

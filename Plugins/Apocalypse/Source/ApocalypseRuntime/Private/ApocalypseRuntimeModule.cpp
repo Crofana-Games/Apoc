@@ -3,12 +3,15 @@
 #include "ApocalypseRuntimeModule.h"
 
 #include "ApcDomainInterface.h"
-#include "coreclr_delegates.h"
-#include "hostfxr.h"
+#include "inc/coreclr_delegates.h"
+#include "inc/hostfxr.h"
 #include "Interop.h"
 
+#define BINARIES_DIR "Binaries"
+#define HOSTFXR_PATH "dotnet/host/fxr/7.0.5/hostfxr.dll"
+
 #ifdef PLATFORM_WINDOWS
-	#define HOSTFXR_PATH "dotnet/host/fxr/7.0.5/hostfxr.dll"
+	#define HOSTFXR_ROOT "Win64"
 #else
 	#error "Unknown platform"
 #endif
@@ -107,7 +110,7 @@ void FApocalypseRuntimeModule::UnregisterDomain(IApcDomainInterface* Domain)
 
 void FApocalypseRuntimeModule::StartCLR()
 {
-	const FString HostFXRPath = FPaths::Combine(FPaths::ProjectPluginsDir(), "Apocalypse", "Binaries", "Win64", TEXT(HOSTFXR_PATH));
+	const FString HostFXRPath = FPaths::Combine(FPaths::ProjectDir(), BINARIES_DIR, HOSTFXR_ROOT, HOSTFXR_PATH);
 	void* HostFXR = FPlatformProcess::GetDllHandle(*HostFXRPath);
 	check(HostFXR);
 

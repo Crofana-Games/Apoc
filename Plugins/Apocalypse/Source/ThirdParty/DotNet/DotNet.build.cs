@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnrealBuildTool;
 
 public class DotNet : ModuleRules
@@ -9,16 +10,16 @@ public class DotNet : ModuleRules
 	{
 		Type = ModuleType.External;
 		
-		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "inc"));
-
 		var DotnetDir = Path.Combine("$(BinaryOutputDir)", "dotnet");
-		var HostfxrDir = Path.Combine("host", "fxr", "7.0.5", "hostfxr.dll");
-		RuntimeDependencies.Add(Path.Combine(DotnetDir, HostfxrDir),
-			Path.Combine(ModuleDirectory, HostfxrDir));
 
-		var Files = GetFiles(Path.Combine(ModuleDirectory, "shared", "Microsoft.NETCore.App", "7.0.5"));
+		var Files = GetFiles(ModuleDirectory);
 		foreach (var File in Files)
 		{
+			if (Regex.IsMatch(File, ".*\\.build\\.cs"))
+			{
+				continue;
+			}
+			
 			var DestPath = File.Substring(ModuleDirectory.Length + 1,
 				File.Length - ModuleDirectory.Length - 1);
 
