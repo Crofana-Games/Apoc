@@ -36,6 +36,7 @@ public class ApocalypseRuntime : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
+				"DotNet",
 			}
 		);
 		
@@ -45,7 +46,5 @@ public class ApocalypseRuntime : ModuleRules
 			{
 			}
 		);
-		
-		RuntimeDependencies.Add("../ThirdParty");
 	}
 }

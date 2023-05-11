@@ -8,7 +8,7 @@
 #include "Interop.h"
 
 #ifdef PLATFORM_WINDOWS
-	#define HOSTFXR_PATH "Apocalypse/Source/ThirdParty/dotnet/host/fxr/7.0.5/hostfxr.dll"
+	#define HOSTFXR_PATH "dotnet/host/fxr/7.0.5/hostfxr.dll"
 #else
 	#error "Unknown platform"
 #endif
@@ -107,7 +107,7 @@ void FApocalypseRuntimeModule::UnregisterDomain(IApcDomainInterface* Domain)
 
 void FApocalypseRuntimeModule::StartCLR()
 {
-	const FString HostFXRPath = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT(HOSTFXR_PATH));
+	const FString HostFXRPath = FPaths::Combine(FPaths::ProjectPluginsDir(), "Apocalypse", "Binaries", "Win64", TEXT(HOSTFXR_PATH));
 	void* HostFXR = FPlatformProcess::GetDllHandle(*HostFXRPath);
 	check(HostFXR);
 
