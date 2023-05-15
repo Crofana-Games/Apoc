@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
-namespace Kernel;
+namespace Linker;
 
 public class ApcDomain : AssemblyLoadContext
 {

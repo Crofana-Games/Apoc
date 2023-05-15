@@ -7,6 +7,6 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     
-    <Import Project="$(SolutionDir)/Apoc.targets" />
+    <Import Project="$(SolutionDir)Managed/Apoc.targets" />
 
 </Project>

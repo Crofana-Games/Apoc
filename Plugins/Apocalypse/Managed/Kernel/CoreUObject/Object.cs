@@ -3,7 +3,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Engine;
+namespace Kernel;
 
 public unsafe abstract partial class Object : IStub
 {

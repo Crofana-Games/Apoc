@@ -1,7 +1,7 @@
 ﻿
 
 
-namespace Engine;
+namespace Kernel;
 
 public class DynamicObject : Object
 {

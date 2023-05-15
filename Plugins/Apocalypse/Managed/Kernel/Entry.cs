@@ -1,132 +1,54 @@
-﻿using System.Diagnostics;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Runtime.Loader;
+﻿
 
 namespace Kernel;
 
-internal unsafe class Entry
+internal class Entry
 {
-    public struct ApcAssemblyLoadRequest
+    private unsafe struct InitArgs
     {
-        public IntPtr Domain { get; }
-        public IntPtr AssemblyPath { get; }
-        public IntPtr EntryTypeName { get; }
-        public IntPtr EntryMethodName { get; }
-        public IntPtr Userdata { get; }
+        public delegate* unmanaged<IntPtr, IntPtr> Callback_CoreNewString;
+
+        public delegate* unmanaged<IntPtr*, IntPtr> Callback_Reflection_NewStub;
+
+        public delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> Reflection_CallFunction;
+        public delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> Reflection_GetProperty;
+        public delegate* unmanaged<IntPtr, IntPtr, ManagedValue*, bool> Reflection_SetProperty;
+
+        public delegate* unmanaged<Logger.LogVerbosity, IntPtr, void> Logger_Log;
+
+        public delegate* unmanaged<IntPtr, IntPtr, IntPtr, byte, IntPtr> Object_FindObject;
+        public delegate* unmanaged<IntPtr, IntPtr> Object_UnmanagedGetClass;
+        public delegate* unmanaged<IntPtr, IntPtr> Object_UnmanagedGetOuter;
+        public delegate* unmanaged<IntPtr, IntPtr> Object_UnmanagedGetName;
+
+        public delegate* unmanaged<IntPtr, IntPtr> Class_GetDefaultObject;
     }
 
-    public unsafe struct FInitArgs
+    public unsafe static void Setup(IntPtr userdata)
     {
-        public delegate* unmanaged<IntPtr, IntPtr> CreateDomain;
-        public delegate* unmanaged<ApcAssemblyLoadRequest, void> LoadAssembly;
-        public delegate* unmanaged<IntPtr, void> UnloadDomain;
-    }
+        InitArgs* args = (InitArgs*)userdata;
 
-    [UnmanagedCallersOnly]
-    public static void Setup(FInitArgs* args)
-    {
-        args->CreateDomain = &CreateDomain;
-        args->LoadAssembly = &LoadAssembly;
-        args->UnloadDomain = &UnloadDomain;
+        // Callback
+        args->Callback_CoreNewString = &Core.NewString;
+        args->Callback_Reflection_NewStub = &Reflection.NewStub;
 
-        Debugger.Launch();
+        // Reflection API
+        Reflection.CallFunction = args->Reflection_CallFunction;
+        Reflection.GetProperty = args->Reflection_GetProperty;
+        Reflection.SetProperty = args->Reflection_SetProperty;
 
-        Console.WriteLine("Kernel Module Setup!");
-    }
+        // Log API
+        Logger.UnmanagedLog = args->Logger_Log;
 
-    [UnmanagedCallersOnly]
-    public static IntPtr CreateDomain(IntPtr domainNamePtr)
-    {
-        string? domainName = Marshal.PtrToStringUni(domainNamePtr);
-        if (domainName is null)
-        {
-            return IntPtr.Zero;
-        }
+        // Core UObject API
+        Object.UnmanagedFindObject = args->Object_FindObject;
+        Object.UnmanagedGetClass = args->Object_UnmanagedGetClass;
+        Object.UnmanagedGetOuter = args->Object_UnmanagedGetOuter;
+        Object.UnmanagedGetName = args->Object_UnmanagedGetName;
 
-        var domain = new ApcDomain(domainName);
-        return GCHandle.ToIntPtr(domain.Handle);
-    }
+        // UClass API
+        Class.UnmanagedGetDefaultObject = args->Class_GetDefaultObject;
 
-    [UnmanagedCallersOnly]
-    public static void LoadAssembly(ApcAssemblyLoadRequest request)
-    {
-        var domain = request.Domain != IntPtr.Zero ? GCHandle.FromIntPtr(request.Domain).Target as ApcDomain : AssemblyLoadContext.Default;
-        if (domain is null)
-        {
-            return;
-        }
-
-        string? assemblyPath = Marshal.PtrToStringUni(request.AssemblyPath);
-        if (assemblyPath is null)
-        {
-            return;
-        }
-
-        Assembly asm;
-        using (var stream = new FileStream(assemblyPath, FileMode.Open))
-        {
-            asm = domain.LoadFromStream(stream);
-        }
-
-        if (request.EntryTypeName == IntPtr.Zero || request.EntryMethodName == IntPtr.Zero)
-        {
-            return;
-        }
-
-        string? entryTypeName = Marshal.PtrToStringUni(request.EntryTypeName);
-        if (entryTypeName is null)
-        {
-            return;
-        }
-
-        string? entryMethodName = Marshal.PtrToStringUni(request.EntryMethodName);
-        if (entryMethodName is null)
-        {
-            return;
-        }
-
-
-        Type? entry = asm.GetType(entryTypeName);
-        if (entry is null)
-        {
-            return;
-        }
-
-        MethodInfo? setup = entry.GetMethod(entryMethodName);
-        if (setup is null)
-        {
-            return;
-        }
-
-        if (!setup.IsStatic)
-        {
-            return;
-        }
-
-        ParameterInfo[] parameters = setup.GetParameters();
-        if (parameters.Length != 1)
-        {
-            return;
-        }
-
-        if (parameters[0].ParameterType != typeof(IntPtr))
-        {
-            return;
-        }
-
-        setup.Invoke(null, new object[] { request.Userdata });
-    }
-
-    [UnmanagedCallersOnly]
-    public static void UnloadDomain(IntPtr domainHandle)
-    {
-        var domain = GCHandle.FromIntPtr(domainHandle).Target as ApcDomain;
-        if (domain is null)
-        {
-            return;
-        }
-        
-        domain.Unload();
+        Logger.Log("Engine Module Setup!");
     }
 }

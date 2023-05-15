@@ -7,10 +7,10 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\..\Plugins\Apocalypse\Managed\Engine\Engine.csproj" />
-    </ItemGroup>
+  <Import Project="$(SolutionDir)Managed/Apoc.targets" />
 
-    <Import Project="$(SolutionDir)/Apoc.targets" />
+    <ItemGroup>
+      <ProjectReference Include="..\..\Plugins\Apocalypse\Managed\Kernel\Kernel.csproj" />
+    </ItemGroup>
 
 </Project>

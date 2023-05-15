@@ -3,7 +3,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Engine;
+namespace Kernel;
 
 public static class Core
 {

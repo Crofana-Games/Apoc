@@ -2,7 +2,7 @@
 
 
 
-namespace Engine;
+namespace Kernel;
 
 public unsafe partial class Object
 {

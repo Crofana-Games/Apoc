@@ -141,8 +141,8 @@ void FApocalypseRuntimeModule::StartCLR()
 		FUnloadDomain OutUnloadDomain;
 	} InitArgs;
 
-	const FString Assembly = FPaths::Combine(AssemblyPath, TEXT("Kernel.dll"));
-	const FString Type = TEXT("Kernel.Entry, Kernel");
+	const FString Assembly = FPaths::Combine(AssemblyPath, TEXT("Linker.dll"));
+	const FString Type = TEXT("Linker.Entry, Linker");
 	const FString Method = TEXT("Setup");
 	void(*Setup)(FInitArgs&) = nullptr;
 	LoadAssemblyAndGetFunctionPointer(*Assembly, *Type, *Method, UNMANAGEDCALLERSONLY_METHOD, nullptr, (void**)&Setup);

@@ -46,8 +46,8 @@ void UApcEngineDomain::Initialize(FSubsystemCollectionBase& Collection)
 		
 		FApcAssemblyLoadRequest Request;
 		//Request.Domain = this;
-		Request.AssemblyPath = FPaths::Combine(AssemblyDir, TEXT("Engine.dll"));
-		Request.EntryTypeName = TEXT("Engine.Entry");
+		Request.AssemblyPath = FPaths::Combine(AssemblyDir, TEXT("Kernel.dll"));
+		Request.EntryTypeName = TEXT("Kernel.Entry");
 		Request.EntryMethodName = TEXT("Setup");
 		Request.Userdata = &Userdata;
 	

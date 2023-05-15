@@ -12,3 +12,4 @@ UnLua
 bin
 obj
 Content/Assemblies/*.dll
+Apoc.sln
